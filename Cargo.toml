@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 gilrs = "0.8.1"
+lazy_static = "1.4.0"
+cached = "0.29.0"
 partial_application = "0.2.1"
 maplit = "1.0.2"
 bitflags = "=1.2.1"
