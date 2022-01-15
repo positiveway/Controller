@@ -9,6 +9,7 @@ dependencies = [
  "bitflags",
  "gilrs",
  "inputbot",
+ "maplit",
  "partial_application",
 ]
 
@@ -181,7 +182,6 @@ dependencies = [
 [[package]]
 name = "inputbot"
 version = "0.5.0"
-source = "git+https://github.com/obv-mikhail/InputBot#e54b3a04cccbcdead0141a42688d2cf7e89fd6d4"
 dependencies = [
  "input",
  "libc",
@@ -190,6 +190,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "uinput",
+ "uinput-sys",
  "winapi",
  "x11",
 ]
@@ -264,6 +265,12 @@ checksum = "86dd2487cdfea56def77b88438a2c915fb45113c5319bfe7e14306ca4cd0b0e1"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "memoffset"

@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 gilrs = "0.8.1"
 partial_application = "0.2.1"
+maplit = "1.0.2"
 bitflags = "=1.2.1"
-inputbot = { git = "https://github.com/obv-mikhail/InputBot" }
+inputbot = { path = "/home/user/CLionProjects/InputBot" }
+#inputbot = { git = "https://github.com/obv-mikhail/InputBot" }
