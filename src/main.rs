@@ -61,17 +61,39 @@ lazy_static! {
     static ref fake_device:Device = Device::init_mouse_keyboard();
 }
 
-const MOUSE_SPEED: f32 = 10.0;
+const MOUSE_SPEED: f32 = 1.0;
 const SCROLL_SPEED: f32 = 3.0;
 
-pub fn move_mouse(coords: &MutexGuard<Coords>) {
-    let x_force = coords.x * MOUSE_SPEED;
-    let y_force = coords.y * -MOUSE_SPEED;
-    if x_force != 0.0 {
-        fake_device.send(X, x_force as i32);
+fn get_squared_speed(value: f32) -> i32 {
+    let sign = value / value.abs();
+    let mut value = value.abs();
+
+    const LOW_POWER: f32 = 2.1;
+    const HIGH_POWER: f32 = 2.4;
+    const BARRIER:f32 = 0.9;
+    let power = if value > BARRIER{ HIGH_POWER } else { LOW_POWER };
+
+    if value.abs() > 0.1 {
+        value = (value * 10.0).powf(power) / 10.0;
     }
-    if y_force != 0.0 {
-        fake_device.send(Y, y_force as i32);
+    value *= sign;
+    return (value.round() as f32 * MOUSE_SPEED) as i32;
+}
+
+pub fn move_mouse(coords: &MutexGuard<Coords>) {
+    if coords.x == 0.0 && coords.y == 0.0 {
+        return;
+    }
+    println!("orig {} {}", coords.x, coords.y);
+    let x_force = get_squared_speed(coords.x);
+    let y_force = -get_squared_speed(coords.y);
+    println!("increased {} {}", x_force, y_force);
+
+    if x_force != 0 {
+        fake_device.send(X, x_force);
+    }
+    if y_force != 0 {
+        fake_device.send(Y, y_force);
     }
     fake_device.synchronize();
 }
@@ -89,12 +111,9 @@ fn main() {
     thread::spawn(move || {
         loop {
             let mut coords = coords_mutex_clone.lock().unwrap();
-            if coords.x != 0.0 || coords.y != 0.0 {
-                debug!("{} {}", coords.x, coords.y);
-            }
             move_mouse(&coords);
             drop(coords);
-            sleep(Duration::from_millis(50));
+            sleep(Duration::from_millis(25));
         }
     });
 
@@ -153,5 +172,6 @@ fn main() {
                 _ => debug!("Action handling is omitted"),
             }
         }
+        sleep(Duration::from_millis(25));
     }
 }
