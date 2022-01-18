@@ -69,11 +69,11 @@ fn get_squared_speed(value: f32) -> i32 {
     let mut value = value.abs();
 
     const LOW_POWER: f32 = 2.1;
-    const HIGH_POWER: f32 = 2.4;
+    const HIGH_POWER: f32 = 2.2;
     const BARRIER:f32 = 0.9;
     let power = if value > BARRIER{ HIGH_POWER } else { LOW_POWER };
 
-    if value.abs() > 0.1 {
+    if value > 0.1 {
         value = (value * 10.0).powf(power) / 10.0;
     }
     value *= sign;
