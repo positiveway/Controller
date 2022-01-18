@@ -3,17 +3,36 @@ mod uinput_direct;
 #[macro_use]
 extern crate partial_application;
 
-use gilrs::{Gilrs, Button, Event, EventType::*, Axis};
-use std::{thread::sleep, time::Duration};
+use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId};
+use std::{thread, thread::sleep, time::Duration};
 use std::collections::{HashMap};
+use std::process::id;
+use std::sync::{Arc, Mutex, MutexGuard};
 use lazy_static::lazy_static;
 use cached::proc_macro::cached;
 use uinput::Device;
 
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
+use uinput::event::relative::Position::{X, Y};
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
+
+const DEBUG: bool = false;
+
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        if DEBUG{
+            println!($($arg)*);
+        }
+    };
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Coords {
+    pub x: f32,
+    pub y: f32,
+}
 
 lazy_static! {
     static ref copy_key: ButtonsVec = vec![Key::LeftControl,Key::C];
@@ -40,26 +59,52 @@ lazy_static! {
     };
 
     static ref fake_device:Device = Device::init_mouse_keyboard();
-
 }
 
-const MOUSE_SPEED: i32 = 5;
-const SCROLL_SPEED: i32 = 3;
+const MOUSE_SPEED: f32 = 10.0;
+const SCROLL_SPEED: f32 = 3.0;
+
+pub fn move_mouse(coords: &MutexGuard<Coords>) {
+    let x_force = coords.x * MOUSE_SPEED;
+    let y_force = coords.y * -MOUSE_SPEED;
+    if x_force != 0.0 {
+        fake_device.send(X, x_force as i32);
+    }
+    if y_force != 0.0 {
+        fake_device.send(Y, y_force as i32);
+    }
+    fake_device.synchronize();
+}
 
 fn main() {
     let mut gilrs = Gilrs::new().unwrap();
 
-// Iterate over all connected gamepads
-    for (_id, gamepad) in gilrs.gamepads() {
-        println!("{} is {:?}", gamepad.name(), gamepad.power_info());
+    // Iterate over all connected gamepads
+    for (id, gamepad) in gilrs.gamepads() {
+        println!("id {}: {} is {:?}", id, gamepad.name(), gamepad.power_info());
     }
+    let coords_mutex = Arc::new(Mutex::new(Coords { x: 0.0, y: 0.0 }));
+    let coords_mutex_clone = Arc::clone(&coords_mutex);
+
+    thread::spawn(move || {
+        loop {
+            let mut coords = coords_mutex_clone.lock().unwrap();
+            if coords.x != 0.0 || coords.y != 0.0 {
+                debug!("{} {}", coords.x, coords.y);
+            }
+            move_mouse(&coords);
+            drop(coords);
+            sleep(Duration::from_millis(50));
+        }
+    });
 
     let mut commands_mode = true;
+    let mut gilrs = Gilrs::new().unwrap();
 
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            println!("Event {:?} from device id {} at {:?}", event, id, time);
+            debug!("{:?} device id {}", event, id);
 
             let mapping: &ButtonsMap = match commands_mode {
                 true => &CommandsMap,
@@ -80,13 +125,32 @@ fn main() {
                             _ => {}
                         }
                     } else {
-                        println!("Unmapped button");
+                        debug!("Unmapped button");
                         break;
                     }
                 }
-
-                AxisChanged(axis, value, code) => {}
-                _ => println!("Action handling is omitted"),
+                AxisChanged(axis, value, code) => {
+                    match axis {
+                        Axis::LeftStickX | Axis::LeftStickY => {
+                            let mut coords = coords_mutex.lock().unwrap();
+                            match axis {
+                                Axis::LeftStickX => {
+                                    coords.x = value;
+                                }
+                                Axis::LeftStickY => {
+                                    coords.y = value;
+                                }
+                                _ => {}
+                            }
+                            drop(coords);
+                        }
+                        _ => {
+                            debug!("Unmapped axis");
+                            break;
+                        }
+                    }
+                }
+                _ => debug!("Action handling is omitted"),
             }
         }
     }
