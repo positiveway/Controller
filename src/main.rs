@@ -6,7 +6,6 @@ extern crate partial_application;
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId};
 use std::{thread, thread::sleep, time::Duration};
 use std::collections::{HashMap};
-use std::process::id;
 use std::sync::{Arc, Mutex, MutexGuard};
 use lazy_static::lazy_static;
 use cached::proc_macro::cached;
@@ -82,7 +81,7 @@ fn main() {
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            println!("{:?} device id {}", event, id);
+            debug!("{:?} device id {}", event, id);
 
             let mapping = get_mapping();
 
