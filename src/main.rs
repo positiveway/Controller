@@ -1,6 +1,6 @@
 mod uinput_direct;
+mod mouse_move;
 
-#[macro_use]
 extern crate partial_application;
 
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId};
@@ -10,11 +10,11 @@ use std::process::id;
 use std::sync::{Arc, Mutex, MutexGuard};
 use lazy_static::lazy_static;
 use cached::proc_macro::cached;
-use uinput::Device;
 
+use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
-use uinput::event::relative::Position::{X, Y};
+use crate::mouse_move::{Coords, move_mouse};
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
 
@@ -27,12 +27,7 @@ macro_rules! debug {
         }
     };
 }
-
-#[derive(Clone, Copy, Debug)]
-pub struct Coords {
-    pub x: f32,
-    pub y: f32,
-}
+pub(crate) use debug;    // <-- the trick
 
 lazy_static! {
     static ref copy_key: ButtonsVec = vec![Key::LeftControl,Key::C];
@@ -59,47 +54,6 @@ lazy_static! {
     };
 
     static ref fake_device:Device = Device::init_mouse_keyboard();
-}
-
-const MOUSE_SPEED: f32 = 1.0;
-const ACCEL_STEP: f32 = 0.01;
-const SCROLL_SPEED: f32 = 3.0;
-
-fn get_squared_speed(value: f32, accel: f32) -> i32 {
-    const POWER: f32 = 2.1;
-
-    let sign = value / value.abs();
-    let mut value = value.abs();
-
-    if value > 0.1 {
-        value = (value * 10.0).powf(POWER) / 10.0;
-    }
-    value *= sign;
-    value *= (1.0 + accel);
-
-    return (value.round() as f32 * MOUSE_SPEED) as i32;
-}
-
-pub fn move_mouse(coords: &MutexGuard<Coords>, accel: &mut f32) {
-    if coords.x == 0.0 && coords.y == 0.0 {
-        *accel = 1.0;
-        return;
-    }
-    *accel += ACCEL_STEP;
-
-    println!("orig {} {}", coords.x, coords.y);
-    let x_force = get_squared_speed(coords.x, *accel);
-    let y_force = -get_squared_speed(coords.y, *accel);
-    println!("{}", accel);
-    println!("increased {} {}", x_force, y_force);
-
-    if x_force != 0 {
-        fake_device.send(X, x_force);
-    }
-    if y_force != 0 {
-        fake_device.send(Y, y_force);
-    }
-    fake_device.synchronize();
 }
 
 fn main() {
