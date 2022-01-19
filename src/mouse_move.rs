@@ -5,6 +5,7 @@ use std::time::Duration;
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
 use lazy_static::lazy_static;
 use uinput::event::relative::Position::{X, Y};
+use uinput::event::relative::Wheel;
 
 use crate::{fake_device, DEBUG, debug, ButtonsMap};
 
@@ -27,33 +28,35 @@ pub enum TriggerState {
     NoChange,
 }
 
-const MOUSE_SPEED: f32 = 1.0;
-const ACCEL_STEP: f32 = 0.01;
-const SCROLL_SPEED: f32 = 3.0;
-
 lazy_static! {
     pub static ref TRIGGERS:Vec<Button> = vec![Button::LeftTrigger2, Button::RightTrigger2];
     pub static ref triggers_prev_mutex:Mutex<TriggerButtons> = Mutex::new(TriggerButtons::default());
+
     pub static ref mouse_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
     pub static ref scroll_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
 }
 
 const TRIGGER_THRESHOLD: f32 = 0.3;
+const MOUSE_SPEED: f32 = 1.0;
+const MOUSE_ACCEL_STEP: f32 = 0.01;
 
-
-fn get_squared_speed(value: f32, accel: f32) -> i32 {
+fn exponential_speed(value: f32) -> f32 {
     const POWER: f32 = 2.1;
-
-    let sign = value / value.abs();
+    let sign = value.signum();
     let mut value = value.abs();
 
     if value > 0.1 {
         value = (value * 10.0).powf(POWER) / 10.0;
     }
     value *= sign;
+    return value;
+}
+
+fn calc_mouse_speed(value: f32, accel: f32) -> i32 {
+    let mut value = exponential_speed(value);
     value *= (1.0 + accel);
 
-    return (value.round() as f32 * MOUSE_SPEED) as i32;
+    return (value * MOUSE_SPEED).round() as i32;
 }
 
 pub fn move_mouse(coords: &MutexGuard<Coords>, accel: &mut f32) {
@@ -61,11 +64,11 @@ pub fn move_mouse(coords: &MutexGuard<Coords>, accel: &mut f32) {
         *accel = 1.0;
         return;
     }
-    *accel += ACCEL_STEP;
+    *accel += MOUSE_ACCEL_STEP;
 
     debug!("orig {} {}", coords.x, coords.y);
-    let x_force = get_squared_speed(coords.x, *accel);
-    let y_force = -get_squared_speed(coords.y, *accel);
+    let x_force = calc_mouse_speed(coords.x, *accel);
+    let y_force = -calc_mouse_speed(coords.y, *accel);
     debug!("{}", accel);
     debug!("increased {} {}", x_force, y_force);
 
@@ -90,60 +93,61 @@ pub fn spawn_mouse_thread() {
     });
 }
 
-fn process_mouse_arm(axis: Axis, value: f32) {
-    let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
-    if axis == Axis::LeftStickX {
-        mouse_coords.x = value;
+const MIN_SCROLL_THRESHOLD: f32 = 0.2;
+
+fn calc_scroll_direction(value: f32) -> i32 {
+    if value.abs() > MIN_SCROLL_THRESHOLD {
+        -value.signum() as i32
     } else {
-        mouse_coords.y = value;
-    }
-    drop(mouse_coords);
-}
-
-fn process_scroll_arm(axis: Axis, value: f32) {
-    let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
-    if axis == Axis::RightStickX {
-        scroll_coords.x = value;
-    } else {
-        scroll_coords.y = value;
-    }
-    drop(scroll_coords);
-}
-
-pub fn process_axis(axis: Axis, value: f32) {
-    match axis {
-        Axis::LeftStickX | Axis::LeftStickY => {
-            process_mouse_arm(axis, value);
-        }
-        Axis::RightStickX | Axis::RightStickY => {
-            process_scroll_arm(axis, value);
-        }
-        _ => {
-            debug!("Unmapped axis");
-            return;
-        }
+        0
     }
 }
 
-pub fn process_btn_press_release(event: EventType, button: Button, mapping: &ButtonsMap) {
-    if TRIGGERS.contains(&button) {
-        return;
+pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
+    debug!("orig {} {}", coords.x, coords.y);
+    let x_force = calc_scroll_direction(coords.x);
+    let y_force = calc_scroll_direction(coords.y);
+    debug!("dir {} {}", x_force, y_force);
+
+    if x_force != 0 {
+        fake_device.send(Wheel::Horizontal, x_force);
     }
-    if mapping.contains_key(&button) {
-        let seq = &mapping[&button];
-        match event {
-            ButtonPressed(..) => {
-                fake_device.press_sequence(seq);
+    if y_force != 0 {
+        fake_device.send(Wheel::Vertical, y_force);
+    }
+    fake_device.synchronize();
+}
+
+fn calc_scroll_interval(value: f32) -> f32 {
+    let output_start = FAST_SCROLL_INTERVAL;
+    let output_end = SLOW_SCROLL_INTERVAL;
+    let precision = 100 as f32;
+    let step = (output_end - output_start) / precision;
+
+    let mut value = value.abs();
+    value = (value * precision).round();
+    let res = output_end - (step * value);
+    debug!("Interval: {}", res);
+    return res;
+}
+
+const FAST_SCROLL_INTERVAL: f32 = 50 as f32;
+const SLOW_SCROLL_INTERVAL: f32 = 250 as f32;
+
+pub fn spawn_scroll_thread() {
+    thread::spawn(|| {
+        let mut scroll_interval = SLOW_SCROLL_INTERVAL;
+        loop {
+            let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
+            if scroll_coords.y == 0.0 {
+                scroll_interval = SLOW_SCROLL_INTERVAL;
             }
-            ButtonReleased(..) => {
-                fake_device.release_sequence(seq);
-            }
-            _ => {}
+            scroll_interval = calc_scroll_interval(scroll_coords.y);
+            scroll_mouse(&scroll_coords);
+            drop(scroll_coords);
+            sleep(Duration::from_millis(scroll_interval as u64));
         }
-    } else {
-        debug!("Unmapped button");
-        return;
-    }
+    });
 }
 
 pub fn detect_trigger_state(value: f32, prev_value: &mut f32) -> TriggerState {
@@ -158,38 +162,6 @@ pub fn detect_trigger_state(value: f32, prev_value: &mut f32) -> TriggerState {
     *prev_value = value;
     return state;
 }
-
-pub fn process_btn_change(button: Button, value: f32, mapping: &ButtonsMap) {
-    if !TRIGGERS.contains(&button) {
-        return;
-    }
-    if mapping.contains_key(&button) {
-        let seq = &mapping[&button];
-
-        let mut triggers_prev_values = triggers_prev_mutex.lock().unwrap();
-        let trigger_state =
-            if button == Button::LeftTrigger2 {
-                detect_trigger_state(value, &mut triggers_prev_values.left)
-            } else {
-                detect_trigger_state(value, &mut triggers_prev_values.right)
-            };
-
-        match trigger_state {
-            TriggerState::Pressed => {
-                fake_device.press_sequence(seq)
-            }
-            TriggerState::Released => {
-                fake_device.release_sequence(seq)
-            }
-            TriggerState::NoChange => {}
-        }
-        drop(triggers_prev_values);
-    } else {
-        debug!("Unmapped button");
-        return;
-    }
-}
-
 
 fn get_deadzone(gamepad: &Gamepad, axis: Axis) -> f32 {
     gamepad.deadzone(gamepad.axis_code(axis).unwrap()).unwrap()

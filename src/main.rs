@@ -1,5 +1,6 @@
 mod uinput_direct;
 mod mouse_move;
+mod match_events;
 
 extern crate partial_application;
 
@@ -14,6 +15,7 @@ use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
 use crate::mouse_move::*;
+use crate::match_events::*;
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
 
@@ -75,6 +77,7 @@ fn main() {
     print_deadzones(&gilrs, 0);
 
     spawn_mouse_thread();
+    spawn_scroll_thread();
 
     let mut gilrs = Gilrs::new().unwrap();
 
