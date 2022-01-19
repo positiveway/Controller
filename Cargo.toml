@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 gilrs = "0.8.1"
 uinput = { path = "/home/user/CLionProjects/rust-uinput" }
-#uinput = "0.1.3"
+#uinput = { git = "https://github.com/positiveway/rust-uinput" }
 lazy_static = "1.4.0"
 cached = "0.29.0"
 partial_application = "0.2.1"

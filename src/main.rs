@@ -65,15 +65,15 @@ fn main() {
     }
     print_deadzones(&gilrs, 0);
 
-    let coords_mutex = Arc::new(Mutex::new(Coords::default()));
-    let coords_mutex_clone = Arc::clone(&coords_mutex);
+    let mouse_coords_mutex = Arc::new(Mutex::new(Coords::default()));
+    let mouse_coords_mutex_clone = Arc::clone(&mouse_coords_mutex);
 
     thread::spawn(move || {
         let mut accel: f32 = 1.0;
         loop {
-            let mut coords = coords_mutex_clone.lock().unwrap();
-            move_mouse(&coords, &mut accel);
-            drop(coords);
+            let mut mouse_coords = mouse_coords_mutex_clone.lock().unwrap();
+            move_mouse(&mouse_coords, &mut accel);
+            drop(mouse_coords);
             sleep(Duration::from_millis(25));
         }
     });
@@ -112,17 +112,17 @@ fn main() {
                 AxisChanged(axis, value, code) => {
                     match axis {
                         Axis::LeftStickX | Axis::LeftStickY => {
-                            let mut coords = coords_mutex.lock().unwrap();
+                            let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
                             match axis {
                                 Axis::LeftStickX => {
-                                    coords.x = value;
+                                    mouse_coords.x = value;
                                 }
                                 Axis::LeftStickY => {
-                                    coords.y = value;
+                                    mouse_coords.y = value;
                                 }
                                 _ => {}
                             }
-                            drop(coords);
+                            drop(mouse_coords);
                         }
                         _ => {
                             debug!("Unmapped axis");
