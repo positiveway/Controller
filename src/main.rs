@@ -62,31 +62,35 @@ lazy_static! {
 }
 
 const MOUSE_SPEED: f32 = 1.0;
+const ACCEL_STEP: f32 = 0.01;
 const SCROLL_SPEED: f32 = 3.0;
 
-fn get_squared_speed(value: f32) -> i32 {
+fn get_squared_speed(value: f32, accel: f32) -> i32 {
+    const POWER: f32 = 2.1;
+
     let sign = value / value.abs();
     let mut value = value.abs();
 
-    const LOW_POWER: f32 = 2.1;
-    const HIGH_POWER: f32 = 2.2;
-    const BARRIER:f32 = 0.9;
-    let power = if value > BARRIER{ HIGH_POWER } else { LOW_POWER };
-
     if value > 0.1 {
-        value = (value * 10.0).powf(power) / 10.0;
+        value = (value * 10.0).powf(POWER) / 10.0;
     }
     value *= sign;
+    value *= (1.0 + accel);
+
     return (value.round() as f32 * MOUSE_SPEED) as i32;
 }
 
-pub fn move_mouse(coords: &MutexGuard<Coords>) {
+pub fn move_mouse(coords: &MutexGuard<Coords>, accel: &mut f32) {
     if coords.x == 0.0 && coords.y == 0.0 {
+        *accel = 1.0;
         return;
     }
+    *accel += ACCEL_STEP;
+
     println!("orig {} {}", coords.x, coords.y);
-    let x_force = get_squared_speed(coords.x);
-    let y_force = -get_squared_speed(coords.y);
+    let x_force = get_squared_speed(coords.x, *accel);
+    let y_force = -get_squared_speed(coords.y, *accel);
+    println!("{}", accel);
     println!("increased {} {}", x_force, y_force);
 
     if x_force != 0 {
@@ -109,9 +113,10 @@ fn main() {
     let coords_mutex_clone = Arc::clone(&coords_mutex);
 
     thread::spawn(move || {
+        let mut accel: f32 = 1.0;
         loop {
             let mut coords = coords_mutex_clone.lock().unwrap();
-            move_mouse(&coords);
+            move_mouse(&coords, &mut accel);
             drop(coords);
             sleep(Duration::from_millis(25));
         }
