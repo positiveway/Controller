@@ -54,6 +54,7 @@ lazy_static! {
     };
 
     static ref fake_device:Device = Device::init_mouse_keyboard();
+    static ref mouse_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
 }
 
 fn main() {
@@ -65,13 +66,10 @@ fn main() {
     }
     print_deadzones(&gilrs, 0);
 
-    let mouse_coords_mutex = Arc::new(Mutex::new(Coords::default()));
-    let mouse_coords_mutex_clone = Arc::clone(&mouse_coords_mutex);
-
-    thread::spawn(move || {
+    thread::spawn(|| {
         let mut accel: f32 = 1.0;
         loop {
-            let mut mouse_coords = mouse_coords_mutex_clone.lock().unwrap();
+            let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
             move_mouse(&mouse_coords, &mut accel);
             drop(mouse_coords);
             sleep(Duration::from_millis(25));
@@ -113,14 +111,10 @@ fn main() {
                     match axis {
                         Axis::LeftStickX | Axis::LeftStickY => {
                             let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
-                            match axis {
-                                Axis::LeftStickX => {
-                                    mouse_coords.x = value;
-                                }
-                                Axis::LeftStickY => {
-                                    mouse_coords.y = value;
-                                }
-                                _ => {}
+                            if axis == Axis::LeftStickX {
+                                mouse_coords.x = value;
+                            } else {
+                                mouse_coords.y = value;
                             }
                             drop(mouse_coords);
                         }
