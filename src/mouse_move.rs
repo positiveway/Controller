@@ -1,8 +1,11 @@
 use std::sync::MutexGuard;
+use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 use gilrs::{Axis, Gamepad, Gilrs};
 use uinput::event::relative::Position::{X, Y};
 
-use crate::{fake_device, DEBUG, debug};
+use crate::{fake_device, DEBUG, debug, mouse_coords_mutex};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Coords {
@@ -49,6 +52,18 @@ pub fn move_mouse(coords: &MutexGuard<Coords>, accel: &mut f32) {
         fake_device.send(Y, y_force);
     }
     fake_device.synchronize();
+}
+
+pub fn spawn_mouse_thread(){
+    thread::spawn(|| {
+        let mut accel: f32 = 1.0;
+        loop {
+            let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
+            move_mouse(&mouse_coords, &mut accel);
+            drop(mouse_coords);
+            sleep(Duration::from_millis(25));
+        }
+    });
 }
 
 fn get_deadzone(gamepad: &Gamepad, axis: Axis) -> f32 {

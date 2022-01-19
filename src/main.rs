@@ -14,7 +14,7 @@ use cached::proc_macro::cached;
 use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
-use crate::mouse_move::{Coords, move_mouse, print_deadzones};
+use crate::mouse_move::{Coords, move_mouse, print_deadzones, spawn_mouse_thread};
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
 
@@ -55,6 +55,7 @@ lazy_static! {
 
     static ref fake_device:Device = Device::init_mouse_keyboard();
     static ref mouse_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
+    static ref scroll_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
 }
 
 fn main() {
@@ -66,15 +67,7 @@ fn main() {
     }
     print_deadzones(&gilrs, 0);
 
-    thread::spawn(|| {
-        let mut accel: f32 = 1.0;
-        loop {
-            let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
-            move_mouse(&mouse_coords, &mut accel);
-            drop(mouse_coords);
-            sleep(Duration::from_millis(25));
-        }
-    });
+    spawn_mouse_thread();
 
     let mut commands_mode = true;
     let mut gilrs = Gilrs::new().unwrap();
@@ -117,6 +110,15 @@ fn main() {
                                 mouse_coords.y = value;
                             }
                             drop(mouse_coords);
+                        }
+                        Axis::RightStickX | Axis::RightStickY => {
+                            let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
+                            if axis == Axis::RightStickX {
+                                scroll_coords.x = value;
+                            } else {
+                                scroll_coords.y = value;
+                            }
+                            drop(scroll_coords);
                         }
                         _ => {
                             debug!("Unmapped axis");
