@@ -14,7 +14,7 @@ use cached::proc_macro::cached;
 use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
-use crate::mouse_move::{Coords, move_mouse};
+use crate::mouse_move::{Coords, move_mouse, print_deadzones};
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
 
@@ -63,7 +63,9 @@ fn main() {
     for (id, gamepad) in gilrs.gamepads() {
         println!("id {}: {} is {:?}", id, gamepad.name(), gamepad.power_info());
     }
-    let coords_mutex = Arc::new(Mutex::new(Coords { x: 0.0, y: 0.0 }));
+    print_deadzones(&gilrs, 0);
+
+    let coords_mutex = Arc::new(Mutex::new(Coords::default()));
     let coords_mutex_clone = Arc::clone(&coords_mutex);
 
     thread::spawn(move || {
