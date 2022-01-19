@@ -14,7 +14,7 @@ use cached::proc_macro::cached;
 use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
-use crate::mouse_move::{Coords, move_mouse, print_deadzones, spawn_mouse_thread};
+use crate::mouse_move::*;
 
 type ButtonsMap = HashMap<Button, ButtonsVec>;
 
@@ -53,9 +53,17 @@ lazy_static! {
         typing_map
     };
 
+    pub static ref commands_mode_mutex:Mutex<bool> = Mutex::new(true);
+
     static ref fake_device:Device = Device::init_mouse_keyboard();
-    static ref mouse_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
-    static ref scroll_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
+}
+
+pub fn get_mapping() -> &'static ButtonsMap {
+    let commands_mode = commands_mode_mutex.lock().unwrap();
+    match *commands_mode {
+        true => &CommandsMap,
+        false => &TypingMap,
+    }
 }
 
 fn main() {
@@ -69,62 +77,24 @@ fn main() {
 
     spawn_mouse_thread();
 
-    let mut commands_mode = true;
     let mut gilrs = Gilrs::new().unwrap();
 
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            debug!("{:?} device id {}", event, id);
+            println!("{:?} device id {}", event, id);
 
-            let mapping: &ButtonsMap = match commands_mode {
-                true => &CommandsMap,
-                false => &TypingMap,
-            };
+            let mapping = get_mapping();
 
             match event {
                 ButtonPressed(button, code) | ButtonReleased(button, code) => {
-                    if mapping.contains_key(&button) {
-                        let seq = &mapping[&button];
-                        match event {
-                            ButtonPressed(..) => {
-                                fake_device.press_sequence(seq);
-                            }
-                            ButtonReleased(..) => {
-                                fake_device.release_sequence(seq);
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        debug!("Unmapped button");
-                        break;
-                    }
+                    process_btn_press_release(event, button, mapping);
+                }
+                ButtonChanged(button, value, code) => {
+                    process_btn_change(button, value, mapping);
                 }
                 AxisChanged(axis, value, code) => {
-                    match axis {
-                        Axis::LeftStickX | Axis::LeftStickY => {
-                            let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
-                            if axis == Axis::LeftStickX {
-                                mouse_coords.x = value;
-                            } else {
-                                mouse_coords.y = value;
-                            }
-                            drop(mouse_coords);
-                        }
-                        Axis::RightStickX | Axis::RightStickY => {
-                            let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
-                            if axis == Axis::RightStickX {
-                                scroll_coords.x = value;
-                            } else {
-                                scroll_coords.y = value;
-                            }
-                            drop(scroll_coords);
-                        }
-                        _ => {
-                            debug!("Unmapped axis");
-                            break;
-                        }
-                    }
+                    process_axis(axis, value);
                 }
                 _ => debug!("Action handling is omitted"),
             }

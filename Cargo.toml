@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gilrs = "0.8.1"
+#gilrs = { path = "/home/user/CLionProjects/gilrs/gilrs" }
+gilrs = "0.8.2"
 uinput = { path = "/home/user/CLionProjects/rust-uinput" }
 #uinput = { git = "https://github.com/positiveway/rust-uinput" }
 lazy_static = "1.4.0"
