@@ -93,20 +93,27 @@ pub fn spawn_mouse_thread() {
     });
 }
 
-const MIN_SCROLL_THRESHOLD: f32 = 0.2;
+const MIN_SCROLL_THRESHOLD: f32 = 0.3;
 
-fn calc_scroll_direction(value: f32) -> i32 {
-    if value.abs() > MIN_SCROLL_THRESHOLD {
-        -value.signum() as i32
-    } else {
-        0
+fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
+    if value == 0.0{
+        return 0;
     }
+    let mut value = value.signum();
+    value *= -1.0;
+
+    if scroll_direction == ScrollDirection::Horizontal{
+        if value.abs() < MIN_SCROLL_THRESHOLD{
+            value = 0.0
+        }
+    }
+    value as i32
 }
 
 pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
     debug!("orig {} {}", coords.x, coords.y);
-    let x_force = calc_scroll_direction(coords.x);
-    let y_force = calc_scroll_direction(coords.y);
+    let x_force = calc_scroll_direction(coords.x,ScrollDirection::Horizontal);
+    let y_force = calc_scroll_direction(coords.y,ScrollDirection::Vertical);
     debug!("dir {} {}", x_force, y_force);
 
     if x_force != 0 {
@@ -116,6 +123,12 @@ pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
         fake_device.send(Wheel::Vertical, y_force);
     }
     fake_device.synchronize();
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ScrollDirection{
+    Horizontal,
+    Vertical,
 }
 
 fn calc_scroll_interval(value: f32) -> f32 {
