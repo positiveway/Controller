@@ -24,8 +24,8 @@ impl MoveInfo {
         }
     }
 
-    fn is_accel_stop(&self, value: f32, prev_value: f32, zero_zone:f32) -> bool {
-        if self._in_zero_zone(value,zero_zone) {
+    fn is_accel_stop(&self, value: f32, prev_value: f32, zero_zone: f32) -> bool {
+        if self._in_zero_zone(value, zero_zone) {
             false
         } else {
             get_sign(value) != get_sign(prev_value)
@@ -123,35 +123,26 @@ pub fn spawn_mouse_thread() {
     });
 }
 
+fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection, move_info: &MoveInfo) -> i32 {
+    let zero_zone =
+        if scroll_direction == ScrollDirection::Horizontal {
+            move_info.zero_zone.x
+        } else {
+            move_info.zero_zone.y
+        };
 
-fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
+    if move_info._in_zero_zone(value, zero_zone) {
+        return 0;
+    }
+
     let mut value = get_sign(value);
-    value *= -1.0;
-
     if scroll_direction == ScrollDirection::Horizontal {
-        if value.abs() < SCROLL_ZERO_ZONE_X {
-            value = 0.0
-        }
+        value *= -1.0;
     }
     value as i32
 }
 
-pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
-    debug!("orig {} {}", coords.x, coords.y);
-    let x_force = calc_scroll_direction(coords.x, ScrollDirection::Horizontal);
-    let y_force = calc_scroll_direction(coords.y, ScrollDirection::Vertical);
-    debug!("dir {} {}", x_force, y_force);
-
-    if x_force != 0 {
-        fake_device.send(Wheel::Horizontal, x_force);
-    }
-    if y_force != 0 {
-        fake_device.send(Wheel::Vertical, y_force);
-    }
-    fake_device.synchronize();
-}
-
-fn convert_interval(value: f32, output_start:f32, output_end:f32) -> f32{
+fn convert_interval(value: f32, output_start: f32, output_end: f32) -> f32 {
     let precision = 100 as f32;
     let step = (output_end - output_start) / precision;
 
@@ -163,27 +154,44 @@ fn convert_interval(value: f32, output_start:f32, output_end:f32) -> f32{
 }
 
 fn calc_scroll_interval(value: f32, move_info: &mut MoveInfo) -> f32 {
-
-    convert_interval(value,FAST_SCROLL_INTERVAL,SLOW_SCROLL_INTERVAL)
+    let value: &mut f32 = &mut value.clone();
+    move_info.apply_accel(value);
+    convert_interval(*value, FAST_SCROLL_INTERVAL, SLOW_SCROLL_INTERVAL)
 }
 
+pub fn scroll_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo, scroll_interval: &mut f32) {
+    move_info.update_accel(**coords);
+    if move_info.in_zero_zone(**coords) {
+        *scroll_interval = SLOW_SCROLL_INTERVAL;
+        return;
+    }
+    *scroll_interval = calc_scroll_interval(coords.y, move_info);
+
+    debug!("orig {} {}", coords.x, coords.y);
+    let x_force = calc_scroll_direction(coords.x, ScrollDirection::Horizontal, move_info);
+    let y_force = calc_scroll_direction(coords.y, ScrollDirection::Vertical, move_info);
+    debug!("dir {} {}", x_force, y_force);
+
+    if x_force != 0 {
+        fake_device.send(Wheel::Horizontal, x_force);
+    }
+    if y_force != 0 {
+        fake_device.send(Wheel::Vertical, y_force);
+    }
+    fake_device.synchronize();
+}
 
 pub fn spawn_scroll_thread() {
     thread::spawn(|| {
         let mut move_info = MoveInfo::new(
             SCROLL_ACCEL_STEP,
-            Some(Coords { x: SCROLL_ZERO_ZONE_X, y: 0.0 })
+            Some(Coords { x: SCROLL_ZERO_ZONE_X, y: 0.0 }),
         );
 
         let mut scroll_interval = SLOW_SCROLL_INTERVAL;
         loop {
             let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
-            move_info.update_accel(**coords);
-            if move_info.in_zero_zone(**coords) {
-                scroll_interval = SLOW_SCROLL_INTERVAL;
-            }
-            scroll_interval = calc_scroll_interval(scroll_coords.y);
-            scroll_mouse(&scroll_coords);
+            scroll_mouse(&scroll_coords, &mut move_info, &mut scroll_interval);
             drop(scroll_coords);
             sleep(Duration::from_millis(scroll_interval as u64));
         }
