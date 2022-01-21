@@ -6,8 +6,6 @@ use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
 
-
-
 macro_rules! debug {
     ($($arg:tt)*) => {
         if DEBUG{
@@ -24,6 +22,12 @@ pub type ButtonsMap = HashMap<Button, ButtonsVec>;
 pub struct Coords {
     pub x: f32,
     pub y: f32,
+}
+
+impl Coords {
+    pub fn is_zero(&self) -> bool{
+        self.x == 0.0 && self.y == 0.0
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
