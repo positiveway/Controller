@@ -1,6 +1,7 @@
 mod uinput_direct;
 mod mouse_move;
 mod match_events;
+mod struct_statics;
 
 extern crate partial_application;
 
@@ -14,21 +15,11 @@ use cached::proc_macro::cached;
 use uinput::Device;
 use uinput::event::ButtonsVec;
 use uinput::event::keyboard::Key;
+use crate::struct_statics::*;
 use crate::mouse_move::*;
 use crate::match_events::*;
 
-type ButtonsMap = HashMap<Button, ButtonsVec>;
 
-const DEBUG: bool = false;
-
-macro_rules! debug {
-    ($($arg:tt)*) => {
-        if DEBUG{
-            println!($($arg)*);
-        }
-    };
-}
-pub(crate) use debug;    // <-- the trick
 
 lazy_static! {
     static ref copy_key: ButtonsVec = vec![Key::LeftControl,Key::C];
@@ -53,10 +44,6 @@ lazy_static! {
         let typing_map = CommandsMap.clone();
         typing_map
     };
-
-    pub static ref commands_mode_mutex:Mutex<bool> = Mutex::new(true);
-
-    static ref fake_device:Device = Device::init_mouse_keyboard();
 }
 
 pub fn get_mapping() -> &'static ButtonsMap {

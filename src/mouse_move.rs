@@ -1,42 +1,12 @@
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
+use std::{thread, thread::sleep, time::Duration};
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
-use lazy_static::lazy_static;
 use uinput::event::relative::Position::{X, Y};
 use uinput::event::relative::Wheel;
 
-use crate::{fake_device, DEBUG, debug, ButtonsMap};
+use crate::struct_statics::*;
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Coords {
-    pub x: f32,
-    pub y: f32,
-}
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct TriggerButtons {
-    pub left: f32,
-    pub right: f32,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum TriggerState {
-    Pressed,
-    Released,
-    NoChange,
-}
-
-lazy_static! {
-    pub static ref TRIGGERS:Vec<Button> = vec![Button::LeftTrigger2, Button::RightTrigger2];
-    pub static ref triggers_prev_mutex:Mutex<TriggerButtons> = Mutex::new(TriggerButtons::default());
-
-    pub static ref mouse_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
-    pub static ref scroll_coords_mutex:Mutex<Coords> = Mutex::new(Coords::default());
-}
-
-const TRIGGER_THRESHOLD: f32 = 0.3;
 const MOUSE_SPEED: f32 = 1.0;
 const MOUSE_ACCEL_STEP: f32 = 0.01;
 
@@ -96,14 +66,14 @@ pub fn spawn_mouse_thread() {
 const MIN_SCROLL_THRESHOLD: f32 = 0.3;
 
 fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
-    if value == 0.0{
+    if value == 0.0 {
         return 0;
     }
     let mut value = value.signum();
     value *= -1.0;
 
-    if scroll_direction == ScrollDirection::Horizontal{
-        if value.abs() < MIN_SCROLL_THRESHOLD{
+    if scroll_direction == ScrollDirection::Horizontal {
+        if value.abs() < MIN_SCROLL_THRESHOLD {
             value = 0.0
         }
     }
@@ -112,8 +82,8 @@ fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
 
 pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
     debug!("orig {} {}", coords.x, coords.y);
-    let x_force = calc_scroll_direction(coords.x,ScrollDirection::Horizontal);
-    let y_force = calc_scroll_direction(coords.y,ScrollDirection::Vertical);
+    let x_force = calc_scroll_direction(coords.x, ScrollDirection::Horizontal);
+    let y_force = calc_scroll_direction(coords.y, ScrollDirection::Vertical);
     debug!("dir {} {}", x_force, y_force);
 
     if x_force != 0 {
@@ -125,11 +95,6 @@ pub fn scroll_mouse(coords: &MutexGuard<Coords>) {
     fake_device.synchronize();
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum ScrollDirection{
-    Horizontal,
-    Vertical,
-}
 
 fn calc_scroll_interval(value: f32) -> f32 {
     let output_start = FAST_SCROLL_INTERVAL;
@@ -162,6 +127,8 @@ pub fn spawn_scroll_thread() {
         }
     });
 }
+
+const TRIGGER_THRESHOLD: f32 = 0.3;
 
 pub fn detect_trigger_state(value: f32, prev_value: &mut f32) -> TriggerState {
     let state =

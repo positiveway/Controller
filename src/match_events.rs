@@ -1,11 +1,7 @@
-use crate::mouse_move::*;
-use crate::{fake_device, DEBUG, debug, ButtonsMap};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
-use lazy_static::lazy_static;
+use crate::struct_statics::*;
+use crate::mouse_move::*;
 
 fn process_mouse_arm(axis: Axis, value: f32) {
     let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
