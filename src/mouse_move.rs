@@ -7,17 +7,64 @@ use uinput::event::relative::Wheel;
 use crate::struct_statics::*;
 
 
-const MOUSE_SPEED: f32 = 1.0;
-
-pub fn get_sign(value: f32)->f32{
+pub fn get_sign(value: f32) -> f32 {
     if value != 0.0 {
         value.signum()
-    }
-    else { value }
+    } else { value }
 }
 
+
+
+pub struct MoveInfo {
+    prev_coords: Coords,
+    cur_accel: f32,
+    accel_step: f32,
+}
+
+impl MoveInfo {
+    fn new(accel_step: f32) -> Self {
+        Self {
+            prev_coords: Coords::default(),
+            cur_accel: 0.0,
+            accel_step,
+        }
+    }
+
+    fn is_accel_stop(&self, value: f32, prev_value: f32) -> bool {
+        get_sign(value) != get_sign(prev_value)
+    }
+    fn calc_accel_stop(&mut self, coords: Coords, ignore_x: bool) -> bool {
+        let is_stop_x = self.is_accel_stop(coords.x, self.prev_coords.x);
+        let is_stop_y = self.is_accel_stop(coords.y, self.prev_coords.y);
+        let is_stop =
+            if ignore_x { is_stop_y } else { is_stop_x || is_stop_y };
+
+        if is_stop {
+            self.prev_coords = coords;
+        }
+        is_stop
+    }
+
+    fn update_accel(&mut self, coords: Coords, ignore_x: bool) {
+        let is_stop = self.calc_accel_stop(coords, ignore_x);
+        if is_stop {
+            self.cur_accel = 0.0
+        } else {
+            self.cur_accel += self.accel_step
+        }
+    }
+
+    fn apply_accel(&self, speed: &mut f32) {
+        if USE_MOUSE_ACCEL {
+            *speed *= (1.0 + self.cur_accel)
+        };
+    }
+}
+
+const MOUSE_SPEED: f32 = 1.0;
+
 fn exponential_speed(value: f32) -> f32 {
-    const POWER: f32 = 2.1;
+    const POWER: f32 = 2.0;
     let sign = get_sign(value);
     let mut value = value.abs();
 
@@ -28,63 +75,23 @@ fn exponential_speed(value: f32) -> f32 {
     return value;
 }
 
-const USE_EXPONENTIAL: bool = false;
-const MOUSE_ACCEL_STEP: f32 = 0.05;
+const MOUSE_ACCEL_STEP: f32 = 0.04;
+const USE_MOUSE_EXPONENTIAL: bool = true;
+const USE_MOUSE_ACCEL: bool = true;
 
-pub struct MoveInfo{
-    prev_coords: Coords,
-    cur_accel:f32,
-    accel_step:f32,
-}
-
-impl MoveInfo {
-    fn new(accel_step:f32) -> Self{
-        Self {
-            prev_coords: Coords::default(),
-            cur_accel: 0.0,
-            accel_step,
-        }
-    }
-
-    fn is_accel_stop(&self, value:f32, prev_value:f32) -> bool{
-        get_sign(value) != get_sign(prev_value)
-    }
-    fn calc_accel_stop(&mut self,coords: Coords, ignore_x:bool) -> bool {
-            let is_stop_x = self.is_accel_stop(coords.x,self.prev_coords.x);
-            let is_stop_y = self.is_accel_stop(coords.y,self.prev_coords.y);
-            let is_stop =
-                if ignore_x {is_stop_y }
-                else { is_stop_x || is_stop_y };
-
-            if is_stop{
-                self.prev_coords = coords;
-            }
-            is_stop
-        }
-
-    fn update_accel(&mut self,coords: Coords, ignore_x:bool) {
-        let is_stop = self.calc_accel_stop(coords,ignore_x);
-        if is_stop{
-            self.cur_accel = 0.0
-        }
-        else {
-            self.cur_accel += self.accel_step
-        }
-    }
-
-    fn apply_accel(&self, speed: &mut f32){
-        *speed *= (1.0 + self.cur_accel)
-    }
-}
-
-fn calc_mouse_speed(value: f32, move_info:&MoveInfo) -> i32 {
-    let mut value = exponential_speed(value);
+fn calc_mouse_speed(value: f32, move_info: &MoveInfo) -> i32 {
+    let mut value =
+        if USE_MOUSE_EXPONENTIAL {
+            exponential_speed(value)
+        } else {
+            value
+        };
     move_info.apply_accel(&mut value);
     return (value * MOUSE_SPEED).round() as i32;
 }
 
-pub fn move_mouse(coords: &MutexGuard<Coords>, move_info:&mut MoveInfo) {
-    if coords.is_zero(){
+pub fn move_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo) {
+    if coords.is_zero() {
         return;
     }
     debug!("orig {} {}", coords.x, coords.y);
