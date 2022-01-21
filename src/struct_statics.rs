@@ -50,6 +50,7 @@ pub const MOUSE_ACCEL_STEP: f32 = 0.04;
 pub const USE_MOUSE_EXPONENTIAL: bool = true;
 pub const USE_MOUSE_ACCEL: bool = true;
 
+pub const SCROLL_ACCEL_STEP: f32 = 0.04;
 pub const SCROLL_ZERO_ZONE_X: f32 = 0.3;
 pub const FAST_SCROLL_INTERVAL: f32 = 50 as f32;
 pub const SLOW_SCROLL_INTERVAL: f32 = 250 as f32;
