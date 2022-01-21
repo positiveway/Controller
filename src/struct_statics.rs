@@ -24,12 +24,6 @@ pub struct Coords {
     pub y: f32,
 }
 
-impl Coords {
-    pub fn is_zero(&self) -> bool{
-        self.x == 0.0 && self.y == 0.0
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TriggerButtons {
     pub left: f32,

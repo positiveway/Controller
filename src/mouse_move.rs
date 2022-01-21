@@ -14,19 +14,20 @@ pub fn get_sign(value: f32) -> f32 {
 }
 
 
-
 pub struct MoveInfo {
     prev_coords: Coords,
     cur_accel: f32,
     accel_step: f32,
+    zero_zone: Coords,
 }
 
 impl MoveInfo {
-    fn new(accel_step: f32) -> Self {
+    fn new(accel_step: f32, zero_zone: Option<Coords>) -> Self {
         Self {
             prev_coords: Coords::default(),
             cur_accel: 0.0,
             accel_step,
+            zero_zone: zero_zone.unwrap_or(Coords::default()),
         }
     }
 
@@ -36,22 +37,26 @@ impl MoveInfo {
     fn calc_accel_stop(&mut self, coords: Coords, ignore_x: bool) -> bool {
         let is_stop_x = self.is_accel_stop(coords.x, self.prev_coords.x);
         let is_stop_y = self.is_accel_stop(coords.y, self.prev_coords.y);
-        let is_stop =
-            if ignore_x { is_stop_y } else { is_stop_x || is_stop_y };
+        if ignore_x { is_stop_y } else { is_stop_x || is_stop_y }
+    }
 
-        if is_stop {
-            self.prev_coords = coords;
-        }
-        is_stop
+    fn _in_zero_zone(&self, value: f32, zero_zone_value: f32) -> bool {
+        value.abs() <= zero_zone_value.abs()
+    }
+
+    fn in_zero_zone(&self, coords: Coords) -> bool {
+        self._in_zero_zone(coords.x, self.zero_zone.x)
+            && self._in_zero_zone(coords.y, self.zero_zone.y)
     }
 
     fn update_accel(&mut self, coords: Coords, ignore_x: bool) {
         let is_stop = self.calc_accel_stop(coords, ignore_x);
-        if is_stop {
+        if is_stop || self.in_zero_zone(coords) {
             self.cur_accel = 0.0
         } else {
             self.cur_accel += self.accel_step
         }
+        self.prev_coords = coords;
     }
 
     fn apply_accel(&self, speed: &mut f32) {
@@ -91,11 +96,11 @@ fn calc_mouse_speed(value: f32, move_info: &MoveInfo) -> i32 {
 }
 
 pub fn move_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo) {
-    if coords.is_zero() {
+    move_info.update_accel(**coords, false);
+    if move_info.in_zero_zone(**coords) {
         return;
     }
     debug!("orig {} {}", coords.x, coords.y);
-    move_info.update_accel(**coords, false);
     let x_force = calc_mouse_speed(coords.x, move_info);
     let y_force = -calc_mouse_speed(coords.y, move_info);
     println!("accel: {}", move_info.cur_accel);
@@ -112,7 +117,7 @@ pub fn move_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo) {
 
 pub fn spawn_mouse_thread() {
     thread::spawn(|| {
-        let mut move_info = MoveInfo::new(MOUSE_ACCEL_STEP);
+        let mut move_info = MoveInfo::new(MOUSE_ACCEL_STEP, None);
         loop {
             let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
             move_mouse(&mouse_coords, &mut move_info);
@@ -122,14 +127,14 @@ pub fn spawn_mouse_thread() {
     });
 }
 
-const MIN_SCROLL_THRESHOLD: f32 = 0.3;
+const SCROLL_ZEROZONE_X: f32 = 0.3;
 
 fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
     let mut value = get_sign(value);
     value *= -1.0;
 
     if scroll_direction == ScrollDirection::Horizontal {
-        if value.abs() < MIN_SCROLL_THRESHOLD {
+        if value.abs() < SCROLL_ZEROZONE_X {
             value = 0.0
         }
     }
@@ -170,6 +175,10 @@ const SLOW_SCROLL_INTERVAL: f32 = 250 as f32;
 
 pub fn spawn_scroll_thread() {
     thread::spawn(|| {
+        let mut move_info =
+            MoveInfo::new(MOUSE_ACCEL_STEP,
+                          Some(Coords { x: SCROLL_ZEROZONE_X, y: 0.0 }));
+
         let mut scroll_interval = SLOW_SCROLL_INTERVAL;
         loop {
             let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
