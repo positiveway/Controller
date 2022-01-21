@@ -7,13 +7,6 @@ use uinput::event::relative::Wheel;
 use crate::struct_statics::*;
 
 
-pub fn get_sign(value: f32) -> f32 {
-    if value != 0.0 {
-        value.signum()
-    } else { value }
-}
-
-
 pub struct MoveInfo {
     prev_coords: Coords,
     cur_accel: f32,
@@ -66,23 +59,19 @@ impl MoveInfo {
     }
 }
 
-const MOUSE_SPEED: f32 = 1.0;
 
 fn exponential_speed(value: f32) -> f32 {
-    const POWER: f32 = 2.0;
+    const MOUSE_EXP_POWER: f32 = 2.0;
     let sign = get_sign(value);
     let mut value = value.abs();
 
     if value > 0.1 {
-        value = (value * 10.0).powf(POWER) / 10.0;
+        value = (value * 10.0).powf(MOUSE_EXP_POWER) / 10.0;
     }
     value *= sign;
     return value;
 }
 
-const MOUSE_ACCEL_STEP: f32 = 0.04;
-const USE_MOUSE_EXPONENTIAL: bool = true;
-const USE_MOUSE_ACCEL: bool = true;
 
 fn calc_mouse_speed(value: f32, move_info: &MoveInfo) -> i32 {
     let mut value =
@@ -92,7 +81,7 @@ fn calc_mouse_speed(value: f32, move_info: &MoveInfo) -> i32 {
             value
         };
     move_info.apply_accel(&mut value);
-    return (value * MOUSE_SPEED).round() as i32;
+    return (value * MOUSE_SPEED_MULTIPLIER).round() as i32;
 }
 
 pub fn move_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo) {
@@ -103,7 +92,7 @@ pub fn move_mouse(coords: &MutexGuard<Coords>, move_info: &mut MoveInfo) {
     debug!("orig {} {}", coords.x, coords.y);
     let x_force = calc_mouse_speed(coords.x, move_info);
     let y_force = -calc_mouse_speed(coords.y, move_info);
-    println!("accel: {}", move_info.cur_accel);
+    debug!("accel: {}", move_info.cur_accel);
     debug!("increased {} {}", x_force, y_force);
 
     if x_force != 0 {
@@ -127,14 +116,13 @@ pub fn spawn_mouse_thread() {
     });
 }
 
-const SCROLL_ZEROZONE_X: f32 = 0.3;
 
 fn calc_scroll_direction(value: f32, scroll_direction: ScrollDirection) -> i32 {
     let mut value = get_sign(value);
     value *= -1.0;
 
     if scroll_direction == ScrollDirection::Horizontal {
-        if value.abs() < SCROLL_ZEROZONE_X {
+        if value.abs() < SCROLL_ZERO_ZONE_X {
             value = 0.0
         }
     }
@@ -170,14 +158,12 @@ fn calc_scroll_interval(value: f32) -> f32 {
     return res;
 }
 
-const FAST_SCROLL_INTERVAL: f32 = 50 as f32;
-const SLOW_SCROLL_INTERVAL: f32 = 250 as f32;
 
 pub fn spawn_scroll_thread() {
     thread::spawn(|| {
         let mut move_info =
             MoveInfo::new(MOUSE_ACCEL_STEP,
-                          Some(Coords { x: SCROLL_ZEROZONE_X, y: 0.0 }));
+                          Some(Coords { x: SCROLL_ZERO_ZONE_X, y: 0.0 }));
 
         let mut scroll_interval = SLOW_SCROLL_INTERVAL;
         loop {
@@ -193,13 +179,12 @@ pub fn spawn_scroll_thread() {
     });
 }
 
-const TRIGGER_THRESHOLD: f32 = 0.3;
 
 pub fn detect_trigger_state(value: f32, prev_value: &mut f32) -> TriggerState {
     let state =
-        if value > *prev_value && value > TRIGGER_THRESHOLD {
+        if value > *prev_value && value > TRIGGER_BTN_THRESHOLD {
             TriggerState::Pressed
-        } else if value < *prev_value && value < TRIGGER_THRESHOLD {
+        } else if value < *prev_value && value < TRIGGER_BTN_THRESHOLD {
             TriggerState::Released
         } else {
             TriggerState::NoChange

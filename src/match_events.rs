@@ -39,7 +39,7 @@ pub fn process_axis(axis: Axis, value: f32) {
 }
 
 pub fn process_btn_press_release(event: EventType, button: Button, mapping: &ButtonsMap) {
-    if TRIGGERS.contains(&button) {
+    if TRIGGER_BUTTONS.contains(&button) {
         return;
     }
     if mapping.contains_key(&button) {
@@ -60,7 +60,7 @@ pub fn process_btn_press_release(event: EventType, button: Button, mapping: &But
 }
 
 pub fn process_btn_change(button: Button, value: f32, mapping: &ButtonsMap) {
-    if !TRIGGERS.contains(&button) {
+    if !TRIGGER_BUTTONS.contains(&button) {
         return;
     }
     if mapping.contains_key(&button) {
