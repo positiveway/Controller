@@ -57,7 +57,7 @@ pub fn get_mapping() -> &'static ButtonsMap {
     }
 }
 
-fn match_button(button:&Button) -> &str{
+fn match_button(button: &Button) -> &str {
     match button {
         Button::South => "S",
         Button::East => "E",
@@ -82,7 +82,7 @@ fn match_button(button:&Button) -> &str{
     }
 }
 
-fn match_axis(axis:&Axis) -> &str{
+fn match_axis(axis: &Axis) -> &str {
     match axis {
         Axis::LeftStickX => "LX",
         Axis::LeftStickY => "LY",
@@ -96,45 +96,43 @@ fn match_axis(axis:&Axis) -> &str{
     }
 }
 
-fn match_event(event:&EventType) -> (&str, String, &str){
+fn match_event(event: &EventType) -> (&str, String, &str) {
     let mut button_or_axis = "No";
-    let mut res_value:f32 = 0.0;
+    let mut res_value: f32 = 0.0;
     let mut event_type = "";
 
     match event {
-        EventType::AxisChanged(axis,value,  code) => {
+        EventType::AxisChanged(axis, value, code) => {
             event_type = "A";
             res_value = *value;
             button_or_axis = match_axis(axis);
-        },
-        EventType::ButtonChanged(button,value,  code) => {
+        }
+        EventType::ButtonChanged(button, value, code) => {
             event_type = "B";
             res_value = *value;
             button_or_axis = match_button(button);
-        },
-        EventType::ButtonReleased(button,  code) => {
+        }
+        EventType::ButtonReleased(button, code) => {
             event_type = "Rl";
             button_or_axis = match_button(button);
-
-        },
-        EventType::ButtonPressed(button,  code) => {
+        }
+        EventType::ButtonPressed(button, code) => {
             event_type = "P";
             button_or_axis = match_button(button);
-        },
-        EventType::ButtonRepeated(button,  code) => {
+        }
+        EventType::ButtonRepeated(button, code) => {
             event_type = "Rp";
             button_or_axis = match_button(button);
-
-        },
+        }
         EventType::Connected => {
             event_type = "C"
-        },
+        }
         EventType::Disconnected => {
             event_type = "D"
-        },
+        }
         EventType::Dropped => {
             event_type = "Dr"
-        },
+        }
     };
     let res_value = res_value.to_string();
     return (button_or_axis, res_value, event_type);
@@ -173,7 +171,9 @@ fn main() {
 
             // debug!("{:?} device id {}", event, id);
         }
-        if message != ""{
+        if message != "" {
+            let bytes_n = message.len().to_string() + ";";
+            let message = bytes_n + &*message;
             // message.push_str(lots_of_spaces);
             sendEventsWS(&socket, message).unwrap();
         }
