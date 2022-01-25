@@ -165,7 +165,7 @@ fn main() {
             let device_id = &device_id[..];
             let (button_or_axis, res_value, event_type) = match_event(&event);
 
-            let event_as_str = format!("{device_id},{res_value},{event_type},{button_or_axis};");
+            let event_as_str = format!("{device_id},{event_type},{button_or_axis},{res_value};");
             debug!("{}", {&event_as_str});
             message.push_str(&*event_as_str);
             // sendEventsWS(&socket, event_as_str).unwrap();
