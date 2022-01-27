@@ -1,61 +1,49 @@
-mod uinput_direct;
 mod mouse_move;
 mod match_events;
 mod struct_statics;
 mod wsocket;
 
-extern crate partial_application;
 
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
 use std::{thread, thread::sleep, time::Duration};
 use std::collections::{HashMap};
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex, MutexGuard};
-use lazy_static::lazy_static;
-use cached::proc_macro::cached;
-
-use uinput::Device;
-use uinput::event::ButtonsVec;
-use uinput::event::keyboard::Key;
-use crate::struct_statics::*;
-use crate::mouse_move::*;
-use crate::match_events::*;
+use crate::mouse_move::print_deadzones;
 use crate::wsocket::*;
 
-
-
-lazy_static! {
-    static ref copy_key: ButtonsVec = vec![Key::LeftControl,Key::C];
-    static ref paste_key: ButtonsVec = vec![Key::LeftControl, Key::V];
-
-    static ref CommandsMap: ButtonsMap = HashMap::from([
-        (Button::DPadDown, vec![Key::Down]),
-        (Button::DPadUp, vec![Key::Up]),
-        (Button::DPadLeft, vec![Key::Left]),
-        (Button::DPadRight, vec![Key::Right]),
-        (Button::RightTrigger2, vec![Key::LeftMouse]),
-        (Button::LeftTrigger2, vec![Key::RightMouse]),
-        (Button::RightTrigger, paste_key.to_vec()),
-        (Button::LeftTrigger, copy_key.to_vec()),
-        (Button::West, vec![Key::Enter]),
-        (Button::North, vec![Key::Space]),
-        (Button::South, vec![Key::BackSpace]),
-        (Button::East, vec![Key::LeftMeta]),
-    ]);
-
-    static ref TypingMap: ButtonsMap = {
-        let typing_map = CommandsMap.clone();
-        typing_map
-    };
-}
-
-pub fn get_mapping() -> &'static ButtonsMap {
-    let commands_mode = commands_mode_mutex.lock().unwrap();
-    match *commands_mode {
-        true => &CommandsMap,
-        false => &TypingMap,
-    }
-}
+//
+// lazy_static! {
+//     static ref copy_key: ButtonsVec = vec![Key::LeftControl,Key::C];
+//     static ref paste_key: ButtonsVec = vec![Key::LeftControl, Key::V];
+//
+//     static ref CommandsMap: ButtonsMap = HashMap::from([
+//         (Button::DPadDown, vec![Key::Down]),
+//         (Button::DPadUp, vec![Key::Up]),
+//         (Button::DPadLeft, vec![Key::Left]),
+//         (Button::DPadRight, vec![Key::Right]),
+//         (Button::RightTrigger2, vec![Key::LeftMouse]),
+//         (Button::LeftTrigger2, vec![Key::RightMouse]),
+//         (Button::RightTrigger, paste_key.to_vec()),
+//         (Button::LeftTrigger, copy_key.to_vec()),
+//         (Button::West, vec![Key::Enter]),
+//         (Button::North, vec![Key::Space]),
+//         (Button::South, vec![Key::BackSpace]),
+//         (Button::East, vec![Key::LeftMeta]),
+//     ]);
+//
+//     static ref TypingMap: ButtonsMap = {
+//         let typing_map = CommandsMap.clone();
+//         typing_map
+//     };
+// }
+//
+// pub fn get_mapping() -> &'static ButtonsMap {
+//     let commands_mode = commands_mode_mutex.lock().unwrap();
+//     match *commands_mode {
+//         true => &CommandsMap,
+//         false => &TypingMap,
+//     }
+// }
 
 fn match_button(button: &Button) -> &str {
     match button {
@@ -164,17 +152,14 @@ fn main() {
             let (button_or_axis, res_value, event_type) = match_event(&event);
 
             let event_as_str = format!("{device_id},{event_type},{button_or_axis},{res_value};");
-            debug!("{}", {&event_as_str});
+            // debug!("{}", {&event_as_str});
             message.push_str(&*event_as_str);
             // sendEventsWS(&socket, event_as_str).unwrap();
-            // sendEventsWS(&socket, String::from("ax")).unwrap();
-
-            // debug!("{:?} device id {}", event, id);
         }
         if message != "" {
             let bytes_n = message.len().to_string() + ";";
             let message = bytes_n + &*message;
-            // message.push_str(lots_of_spaces);
+
             sendEventsWS(&socket, message).unwrap();
         }
         sleep(Duration::from_millis(25));

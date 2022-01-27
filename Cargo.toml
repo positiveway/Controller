@@ -9,11 +9,9 @@ edition = "2021"
 #gilrs = { path = "/home/user/CLionProjects/gilrs/gilrs" }
 gilrs = "0.8.2"
 num-traits = "0.2.14"
-uinput = { path = "/home/user/CLionProjects/rust-uinput" }
-#uinput = { git = "https://github.com/positiveway/rust-uinput" }
+#uinput = { path = "/home/user/CLionProjects/rust-uinput" }
+uinput = { git = "https://github.com/positiveway/rust-uinput" }
 lazy_static = "1.4.0"
-cached = "0.29.0"
-partial_application = "0.2.1"
 bitflags = "=1.2.1"
 #inputbot = { path = "/home/user/CLionProjects/InputBot" }
 #inputbot = { git = "https://github.com/obv-mikhail/InputBot" }
