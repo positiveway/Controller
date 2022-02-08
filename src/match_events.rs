@@ -1,91 +1,83 @@
-use std::sync::{Arc, Mutex, MutexGuard};
 use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
-use crate::struct_statics::*;
-use crate::mouse_move::*;
 
-fn process_mouse_arm(axis: Axis, value: f32) {
-    let mut mouse_coords = mouse_coords_mutex.lock().unwrap();
-    if axis == Axis::LeftStickX {
-        mouse_coords.x = value;
-    } else {
-        mouse_coords.y = value;
+
+pub fn match_button(button: &Button) -> &str {
+    match button {
+        Button::South => "S",
+        Button::East => "E",
+        Button::North => "N",
+        Button::West => "W",
+        Button::C => "C",
+        Button::Z => "Z",
+        Button::LeftTrigger => "L",
+        Button::LeftTrigger2 => "L2",
+        Button::RightTrigger => "R",
+        Button::RightTrigger2 => "R2",
+        Button::Select => "Se",
+        Button::Start => "St",
+        Button::Mode => "M",
+        Button::LeftThumb => "LT",
+        Button::RightThumb => "RT",
+        Button::DPadUp => "DU",
+        Button::DPadDown => "DD",
+        Button::DPadLeft => "DL",
+        Button::DPadRight => "DR",
+        Button::Unknown => "U",
     }
-    drop(mouse_coords);
 }
 
-fn process_scroll_arm(axis: Axis, value: f32) {
-    let mut scroll_coords = scroll_coords_mutex.lock().unwrap();
-    if axis == Axis::RightStickX {
-        scroll_coords.x = value;
-    } else {
-        scroll_coords.y = value;
-    }
-    drop(scroll_coords);
-}
-
-pub fn process_axis(axis: Axis, value: f32) {
+pub fn match_axis(axis: &Axis) -> &str {
     match axis {
-        Axis::LeftStickX | Axis::LeftStickY => {
-            process_mouse_arm(axis, value);
-        }
-        Axis::RightStickX | Axis::RightStickY => {
-            process_scroll_arm(axis, value);
-        }
-        _ => {
-            debug!("Unmapped axis");
-            return;
-        }
+        Axis::LeftStickX => "LX",
+        Axis::LeftStickY => "LY",
+        Axis::LeftZ => "LZ",
+        Axis::RightStickX => "RX",
+        Axis::RightStickY => "RY",
+        Axis::RightZ => "RZ",
+        Axis::DPadX => "DX",
+        Axis::DPadY => "DY",
+        Axis::Unknown => "U",
     }
 }
 
-pub fn process_btn_press_release(event: EventType, button: Button, mapping: &ButtonsMap) {
-    if TRIGGER_BUTTONS.contains(&button) {
-        return;
-    }
-    if mapping.contains_key(&button) {
-        let seq = &mapping[&button];
-        match event {
-            ButtonPressed(..) => {
-                fake_device.press_sequence(seq);
-            }
-            ButtonReleased(..) => {
-                fake_device.release_sequence(seq);
-            }
-            _ => {}
+pub fn match_event(event: &EventType) -> (&str, String, &str) {
+    let mut button_or_axis = "No";
+    let mut res_value: f32 = 0.0;
+    let mut event_type = "";
+
+    match event {
+        EventType::AxisChanged(axis, value, code) => {
+            event_type = "A";
+            res_value = *value;
+            button_or_axis = match_axis(axis);
         }
-    } else {
-        debug!("Unmapped button");
-        return;
-    }
-}
-
-pub fn process_btn_change(button: Button, value: f32, mapping: &ButtonsMap) {
-    if !TRIGGER_BUTTONS.contains(&button) {
-        return;
-    }
-    if mapping.contains_key(&button) {
-        let seq = &mapping[&button];
-
-        let mut triggers_prev_values = triggers_prev_mutex.lock().unwrap();
-        let trigger_state =
-            if button == Button::LeftTrigger2 {
-                detect_trigger_state(value, &mut triggers_prev_values.left)
-            } else {
-                detect_trigger_state(value, &mut triggers_prev_values.right)
-            };
-
-        match trigger_state {
-            TriggerState::Pressed => {
-                fake_device.press_sequence(seq)
-            }
-            TriggerState::Released => {
-                fake_device.release_sequence(seq)
-            }
-            TriggerState::NoChange => {}
+        EventType::ButtonChanged(button, value, code) => {
+            event_type = "B";
+            res_value = *value;
+            button_or_axis = match_button(button);
         }
-        drop(triggers_prev_values);
-    } else {
-        debug!("Unmapped button");
-        return;
-    }
+        EventType::ButtonReleased(button, code) => {
+            event_type = "Rl";
+            button_or_axis = match_button(button);
+        }
+        EventType::ButtonPressed(button, code) => {
+            event_type = "P";
+            button_or_axis = match_button(button);
+        }
+        EventType::ButtonRepeated(button, code) => {
+            event_type = "Rp";
+            button_or_axis = match_button(button);
+        }
+        EventType::Connected => {
+            event_type = "C"
+        }
+        EventType::Disconnected => {
+            event_type = "D"
+        }
+        EventType::Dropped => {
+            event_type = "Dr"
+        }
+    };
+    let res_value = res_value.to_string();
+    return (button_or_axis, res_value, event_type);
 }
