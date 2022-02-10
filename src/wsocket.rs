@@ -8,8 +8,12 @@ pub fn init_host() -> UdpSocket {
 
 const hostname: &str = "127.0.0.1:1234";
 
-pub fn sendEventsWS(socket: &UdpSocket, events:String) -> std::io::Result<()> {
-    socket.send_to(events.as_bytes(), hostname)
-        .expect("Error on send");
-    Ok(())
+pub fn sendMessageWS(socket: &UdpSocket, message:String){
+    if message != "" {
+        let bytes_n = message.len().to_string() + ";";
+        let message = bytes_n + &*message;
+
+        socket.send_to(message.as_bytes(), hostname)
+            .expect("Error on send");
+    }
 }

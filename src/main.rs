@@ -9,17 +9,27 @@ use crate::wsocket::*;
 use crate::deadzones::*;
 use crate::match_events::*;
 
-fn main() {
-    let mut gilrs = Gilrs::new().unwrap();
 
-    // Iterate over all connected gamepads
-    for (id, gamepad) in gilrs.gamepads() {
-        println!("id {}: {} is {:?}", id, gamepad.name(), gamepad.power_info());
-    }
-    print_deadzones(&gilrs, 0);
+fn main() {
+    let gamepad_connected_msg = String::from("gamepadConnected;");
 
     let mut gilrs = Gilrs::new().unwrap();
     let socket = init_host();
+
+    println!("Waiting for gamepad connection");
+    let mut gamepad_disconnected = true;
+    while gamepad_disconnected {
+        gilrs = Gilrs::new().unwrap();
+        // Iterate over all connected gamepads
+        for (id, gamepad) in gilrs.gamepads() {
+            gamepad_disconnected = false;
+            println!("id {}: {} is {:?}", id, gamepad.name(), gamepad.power_info());
+        }
+        sleep(Duration::from_millis(25));
+    }
+
+    print_deadzones(&gilrs, 0);
+    sendMessageWS(&socket, gamepad_connected_msg);
 
     loop {
         let mut message = String::from("");
@@ -34,12 +44,7 @@ fn main() {
             // println!("{}", &event_as_str);
             message.push_str(&*event_as_str);
         }
-        if message != "" {
-            let bytes_n = message.len().to_string() + ";";
-            let message = bytes_n + &*message;
-
-            sendEventsWS(&socket, message).unwrap();
-        }
+        sendMessageWS(&socket, message);
         sleep(Duration::from_millis(25));
     }
 }
