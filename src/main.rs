@@ -46,6 +46,6 @@ fn main() {
             message.push_str(&*event_as_str);
         }
         sendMessageWS(&socket, message);
-        sleep(Duration::from_millis(4));
+        sleep(Duration::from_millis(4)); //4 = USB min latency
     }
 }
