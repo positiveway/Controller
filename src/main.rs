@@ -42,9 +42,10 @@ fn main() {
 
             let event_as_str = format!("{device_id},{event_type},{button_or_axis},{res_value};");
             // println!("{}", &event_as_str);
+            // sendMessageWS(&socket, event_as_str);
             message.push_str(&*event_as_str);
         }
         sendMessageWS(&socket, message);
-        sleep(Duration::from_millis(25));
+        sleep(Duration::from_millis(4));
     }
 }
