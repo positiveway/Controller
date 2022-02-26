@@ -41,7 +41,7 @@ pub fn match_axis(axis: &Axis) -> &str {
 }
 
 pub fn match_event(event: &EventType) -> (&str, String, &str) {
-    let mut button_or_axis = "No";
+    let mut button_or_axis = "";
     let mut res_value: f32 = 0.0;
     let mut event_type = "";
 
