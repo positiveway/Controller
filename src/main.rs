@@ -36,6 +36,10 @@ fn main() {
             let event_as_str = format!("{event_type}{button_or_axis}{res_value}");
             // println!("{}", &event_as_str);
             sendMessageWS(&socket, event_as_str);
+
+            if event == EventType::Disconnected{
+                panic!("Gamepad disconnected")
+            }
         }
         sleep(Duration::from_millis(4)); //4 = USB min latency
     }
