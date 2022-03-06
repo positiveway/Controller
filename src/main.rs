@@ -31,9 +31,9 @@ fn main() {
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            let (button_or_axis, res_value, event_type) = match_event(&event);
+            let (button_or_axis, res_value, event_type, code) = match_event(&event);
 
-            let event_as_str = format!("{event_type}{button_or_axis}{res_value}");
+            let event_as_str = format!("{event_type}{button_or_axis}{res_value};{code}");
             // println!("{}", &event_as_str);
             sendMessageWS(&socket, event_as_str);
 

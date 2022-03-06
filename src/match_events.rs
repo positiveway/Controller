@@ -40,33 +40,39 @@ pub fn match_axis(axis: &Axis) -> &str {
     }
 }
 
-pub fn match_event(event: &EventType) -> (&str, String, &str) {
+pub fn match_event(event: &EventType) -> (&str, String, &str, String) {
     let mut button_or_axis = "";
     let mut res_value: f32 = 0.0;
     let mut event_type = "";
+    let mut res_code = String::from("");
 
     match event {
         EventType::AxisChanged(axis, value, code) => {
             event_type = "a";
             res_value = *value;
             button_or_axis = match_axis(axis);
+            res_code = code.to_string()
         }
         EventType::ButtonChanged(button, value, code) => {
             event_type = "b";
             res_value = *value;
             button_or_axis = match_button(button);
+            res_code = code.to_string()
         }
         EventType::ButtonReleased(button, code) => {
             event_type = "c";
             button_or_axis = match_button(button);
+            res_code = code.to_string()
         }
         EventType::ButtonPressed(button, code) => {
             event_type = "d";
             button_or_axis = match_button(button);
+            res_code = code.to_string()
         }
         EventType::ButtonRepeated(button, code) => {
             event_type = "e";
             button_or_axis = match_button(button);
+            res_code = code.to_string()
         }
         EventType::Connected => {
             event_type = "f"
@@ -79,5 +85,5 @@ pub fn match_event(event: &EventType) -> (&str, String, &str) {
         }
     };
     let res_value = res_value.to_string();
-    return (button_or_axis, res_value, event_type);
+    return (button_or_axis, res_value, event_type, res_code);
 }
