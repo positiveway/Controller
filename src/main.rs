@@ -38,7 +38,8 @@ fn main() {
             sendMessageWS(&socket, event_as_str);
 
             if event == EventType::Disconnected{
-                panic!("Gamepad disconnected")
+                println!("Gamepad disconnected");
+                return;
             }
         }
         sleep(Duration::from_millis(4)); //4 = USB min latency
