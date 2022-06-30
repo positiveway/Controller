@@ -1,5 +1,4 @@
-use gilrs::{Gilrs, Button, Event, EventType::*, Axis, Gamepad, GamepadId, EventType};
-
+use gilrs::{Axis, Button, Event, EventType::*, EventType, Gamepad, GamepadId, Gilrs};
 
 pub fn match_button(button: &Button) -> &str {
     match button {
@@ -47,40 +46,40 @@ pub fn match_event(event: &EventType) -> (&str, String, &str, String) {
     let mut res_code = String::from("");
 
     match event {
-        EventType::AxisChanged(axis, value, code) => {
+        AxisChanged(axis, value, code) => {
             event_type = "a";
             res_value = *value;
             button_or_axis = match_axis(axis);
             res_code = code.to_string()
         }
-        EventType::ButtonChanged(button, value, code) => {
+        ButtonChanged(button, value, code) => {
             event_type = "b";
             res_value = *value;
             button_or_axis = match_button(button);
             res_code = code.to_string()
         }
-        EventType::ButtonReleased(button, code) => {
+        ButtonReleased(button, code) => {
             event_type = "c";
             button_or_axis = match_button(button);
             res_code = code.to_string()
         }
-        EventType::ButtonPressed(button, code) => {
+        ButtonPressed(button, code) => {
             event_type = "d";
             button_or_axis = match_button(button);
             res_code = code.to_string()
         }
-        EventType::ButtonRepeated(button, code) => {
+        ButtonRepeated(button, code) => {
             event_type = "e";
             button_or_axis = match_button(button);
             res_code = code.to_string()
         }
-        EventType::Connected => {
+        Connected => {
             event_type = "f"
         }
-        EventType::Disconnected => {
+        Disconnected => {
             event_type = "g"
         }
-        EventType::Dropped => {
+        Dropped => {
             event_type = "h"
         }
     };
