@@ -27,7 +27,6 @@ fn read_send_events(gilrs: &mut Gilrs, socket: &UdpSocket, hostname: &String) {
             if event == Disconnected {
                 println!("Gamepad disconnected");
                 return;
-                ;
             }
         }
         sleep(Duration::from_millis(4)); //4 = USB min latency
@@ -69,7 +68,7 @@ fn main() {
         }
 
         if gamepads_counter == 0 {
-            println!("Connect gamepad and relaunch program");
+            println!("Gamepad is not connected. Waiting...");
         } else if gamepads_counter > 1 {
             println!("Only one gamepad is supported. Disconnect other gamepads");
         } else {
