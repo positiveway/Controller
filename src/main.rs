@@ -59,6 +59,7 @@ fn main() {
     let mut gilrs = Gilrs::new().unwrap();
     let socket = init_host();
 
+    let mut is_wait_msg_printed = false;
     loop {
         gilrs = Gilrs::new().unwrap();
         let mut gamepads_counter = 0;
@@ -68,10 +69,14 @@ fn main() {
         }
 
         if gamepads_counter == 0 {
-            println!("Gamepad is not connected. Waiting...");
+            if !is_wait_msg_printed {
+                is_wait_msg_printed = true;
+                println!("Gamepad is not connected. Waiting...");
+            }
         } else if gamepads_counter > 1 {
             println!("Only one gamepad is supported. Disconnect other gamepads");
         } else {
+            is_wait_msg_printed = false;
             read_send_events(&mut gilrs, &socket, &hostname)
         }
         sleep(Duration::from_millis(5000));
