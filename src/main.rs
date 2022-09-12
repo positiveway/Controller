@@ -1,9 +1,9 @@
-use std::{env, fs, io, thread, thread::sleep, time::Duration};
+use std::{fs, io, thread::sleep, time::Duration};
 use std::env::current_exe;
-use std::net::UdpSocket;
-use std::path::{Path, PathBuf};
+use std::net::{ToSocketAddrs, UdpSocket};
+use std::path::PathBuf;
 
-use gilrs::{Axis, Button, Event, EventType::*, EventType, Gamepad, GamepadId, Gilrs};
+use gilrs::{Event, EventType::*, Gilrs};
 
 use crate::deadzones::*;
 use crate::match_events::*;
@@ -22,7 +22,7 @@ fn read_send_events(gilrs: &mut Gilrs, socket: &UdpSocket, hostname: &String) {
 
             let event_as_str = format!("{event_type}{button_or_axis}{res_value};{code}");
             // println!("{}", &event_as_str);
-            send_message_ws(&socket, event_as_str, hostname);
+            send_message_ws(&socket, &event_as_str, &hostname);
 
             if event == Disconnected {
                 println!("Gamepad disconnected");
@@ -34,7 +34,7 @@ fn read_send_events(gilrs: &mut Gilrs, socket: &UdpSocket, hostname: &String) {
 }
 
 fn get_filepath() -> io::Result<PathBuf> {
-    let mut dir = env::current_exe()?;
+    let mut dir = current_exe()?;
     dir.pop();
     dir.pop();
     dir.pop();
@@ -42,19 +42,27 @@ fn get_filepath() -> io::Result<PathBuf> {
     Ok(dir)
 }
 
-fn main() {
+fn read_hostname() -> String {
     let filename = get_filepath().expect("Hostname file is not found");
     println!("Settings filepath: {}", filename.display());
 
-    let hostname = fs::read_to_string(filename)
+    let mut hostname = fs::read_to_string(filename)
         .expect("Cannot read hostname from file");
 
     if hostname == "" {
-        println!("hostname cannot be empty");
-        return;
+        panic!("hostname cannot be empty");
     }
+    hostname.push_str(PORT);
     println!("Hostname: {}", hostname);
 
+    hostname.to_socket_addrs().expect("Invalid hostname");
+    return hostname;
+}
+
+const PORT: &str = ":1234";
+
+fn main() {
+    let hostname = read_hostname();
 
     let mut gilrs = Gilrs::new().unwrap();
     let socket = init_host();

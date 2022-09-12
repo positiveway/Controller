@@ -1,4 +1,4 @@
-use gilrs::{Axis, Button, Event, EventType::*, EventType, Gamepad, GamepadId, Gilrs};
+use gilrs::{Axis, Button, Event, EventType::*, EventType};
 
 pub fn match_button(button: &Button) -> &str {
     match button {

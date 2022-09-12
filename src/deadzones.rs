@@ -1,4 +1,4 @@
-use gilrs::{Axis, Button, Event, EventType::*, EventType, Gamepad, GamepadId, Gilrs};
+use gilrs::{Axis, Gamepad, Gilrs};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Coords {
