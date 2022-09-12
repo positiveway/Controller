@@ -1,6 +1,6 @@
 use std::net::{UdpSocket};
 
-pub fn init_host() -> UdpSocket {
+pub fn init_socket() -> UdpSocket {
     println!("Binding socket...");
     UdpSocket::bind("127.0.0.1:12345").expect("failed to bind host socket")
 }

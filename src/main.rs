@@ -64,8 +64,8 @@ const PORT: &str = ":1234";
 fn main() {
     let hostname = read_hostname();
 
+    let socket = init_socket();
     let mut gilrs = Gilrs::new().unwrap();
-    let socket = init_host();
 
     let mut is_wait_msg_printed = false;
     loop {
