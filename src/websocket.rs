@@ -9,6 +9,6 @@ pub fn init_socket() -> UdpSocket {
 pub fn send_message_ws(socket: &UdpSocket, message: &String, hostname: &String) {
     match socket.send_to(message.as_bytes(), hostname) {
         Err(e) => println!("Error sending event via UDP: {}", e),
-        Ok(r) => {}
+        Ok(_) => {}
     };
 }
