@@ -46,20 +46,23 @@ fn read_hostname() -> String {
     let filename = get_filepath().expect("Hostname file is not found");
     println!("Settings filepath: {}", filename.display());
 
-    let mut hostname = fs::read_to_string(filename)
+    let raw_hostname = fs::read_to_string(filename)
         .expect("Cannot read hostname from file");
 
-    if hostname == "" {
+    let strip_hostname = raw_hostname.trim();
+
+    if strip_hostname == "" {
         panic!("hostname cannot be empty");
     }
-    hostname.push_str(PORT);
+    let hostname = format!("{}:{}", strip_hostname, PORT);
+
     println!("Hostname: {}", hostname);
 
     hostname.to_socket_addrs().expect("Invalid hostname");
     return hostname;
 }
 
-const PORT: &str = ":1234";
+const PORT: &str = "1234";
 
 fn main() {
     let hostname = read_hostname();
