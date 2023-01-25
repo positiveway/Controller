@@ -21,7 +21,7 @@ fn read_send_events(gilrs: &mut Gilrs, socket: &UdpSocket, hostname: &String) {
             let (button_or_axis, res_value, event_type, code) = match_event(&event);
 
             let event_as_str = format!("{event_type}{button_or_axis}{res_value};{code}");
-            // println!("{}", &event_as_str);
+            println!("{}", &event_as_str);
             send_message_ws(&socket, &event_as_str, &hostname);
 
             if event == Disconnected {
