@@ -1,3 +1,6 @@
+# exit when any command fails
+set -e
+
 rustup update
 rustup default stable
 
